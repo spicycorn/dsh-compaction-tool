@@ -1,0 +1,21 @@
+# dependencies / build tooling
+node_modules/
+.npm/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# local build artifacts not committed (lib/index.mjs IS committed, but if you
+# prefer to build-only, uncomment the line below)
+# lib/index.mjs
+
+# editor / OS noise
+.DS_Store
+*.log
+*.tmp
+.idea/
+.vscode/
+
+# local test scratch
+__*.mjs
+__*.js

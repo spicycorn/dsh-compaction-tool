@@ -1,0 +1,32 @@
+# dsh-compaction-tool bundle patch
+#
+# This file is the `dsh.bundle.patch` layer declared in package.json. When the
+# plugin is installed through the official CLI —
+#
+#   dsh plugin --profile <name> add dsh-compaction-tool@<version>
+#
+# — the command reconciles `dsh.profile.bundles` against installed packages and,
+# seeing this declaration, appends a plugin row for `dsh-compaction-tool` to the
+# bundle stack. The profile boot then merges THIS patch (a single `insert` of
+# the plugin row) exactly like a manual cordis.patch.yml mount line. No profile
+# file edits needed — one command installs and mounts.
+#
+# If the profile still carries an old manual mount line for this plugin in its
+# own cordis.patch.yml, remove it before switching to the bundle channel to
+# avoid double-mounting (two tool registrations, two /compact handlers).
+#
+# The row's `config` is validated against the plugin's Config (schemastery /
+# Standard Schema). Every field is optional; the values below are the
+# documented defaults. Set the two `secondaryModel*` fields to a small, fast
+# model so compaction is cheap and independent of a slow main model.
+- insert:
+    - id: compaction-tool
+      name: 'dsh-compaction-tool'
+      config:
+        thresholdRatio: 0.8
+        keepLastNTurns: 3
+        keepLastNMessages: 10
+        secondaryModelProvider: ''
+        secondaryModelName: ''
+        summaryMaxTokens: 1024
+        autoCompaction: false

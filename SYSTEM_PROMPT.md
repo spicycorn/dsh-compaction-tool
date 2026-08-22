@@ -50,8 +50,10 @@ The tool:
 1. Measures the session's current context occupancy.
 2. Skips (returns `skipped`) if it is below the threshold and you did not pass `force: true`.
 3. Splits history into a **compress** span (the older leading messages) and a **keep** tail
-   (your most recent turns/messages, retained verbatim).
-4. Summarizes the compress span with the **secondary** model (fast, small) — never with you.
+   (your most recent turns/messages, retained verbatim). The split point snaps so an assistant's
+   tool calls are never separated from their results — the kept tail may therefore be slightly
+   larger than requested. If no safe cut exists it returns `skipped`/`failed` and changes nothing.
+4. Summarizes the compress span with the **secondary** model (fast, small) — never with you; a large region is automatically summarized in token-budgeted folded chunks that fit that model's capacity.
 5. Lands a durable, replayable checkpoint in the session and replaces the old span with it.
 
 The tool result is one of:
@@ -62,9 +64,9 @@ The tool result is one of:
 - `skipped` — occupancy was below threshold (or there was nothing compactable). No change was
   made. If you truly need to compress, call again with `force: true`.
 - `cancelled` — the run was aborted. Nothing was committed; the session is unchanged.
-- `failed` — the summarizer or the checkpoint landing failed. **The session is unchanged** (the
-  replacement is applied only on full success). Surface the failure and either retry or continue
-  with the un-compacted history.
+- `failed` — the summarizer or the checkpoint landing failed, **or** the session surface already
+  has unbalanced tool pairing (a result without its matching call) and compaction refuses to make
+  it worse. In every case **the session is unchanged**: failures are atomic (all-or-nothing).
 
 ## After a successful compaction
 

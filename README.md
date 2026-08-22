@@ -61,11 +61,11 @@ All fields are editable at runtime in **Settings → Compaction**.
 
 1. **Measure** — `tokenMeter.measure` + secondary model's context window
 2. **Gate** — skip when occupancy < threshold (unless `force: true`)
-3. **Split** — leading compress span + recent keep tail
-4. **Summarize** — call the **secondary** model (`purpose: "compaction"`), KV-cache warm
-5. **Land** — atomic checkpoint: `compaction/start` → `summary` → `user/message (surfaceOp: replace)` → `compaction/end`
+3. **Split** — leading compress span + recent keep tail, with a **tool-pairing-safe boundary**: the cut is adjusted so it never splits an assistant message's tool calls from their following result events (the same rule as DSH's built-in compaction). The kept tail may end up slightly larger than requested; if no safe cut exists — or the surface already carries an orphaned result — compaction declines cleanly instead of corrupting the session
+4. **Summarize** — call the **secondary** model (`purpose: "compaction"`), KV-cache warm; when a region exceeds that model's input budget (70% of its context window minus `summaryMaxTokens`, or a conservative cap if no capacity is reported) it is split into token-budgeted chunks and folded sequentially, so small local engines are never asked for one oversized request. Transient engine failures (device loss, reset connections, 5xx/timeouts) retry with backoff
+5. **Land** — atomic checkpoint: `compaction/start` → `summary` → `user/message (surfaceOp: replace)` → `compaction/end`; a failed landing closes its own marker so it never leaves a stale compaction lock behind
 
-The commit is **atomic**: on any failure the session surface is unchanged.
+The commit is **atomic**: on any failure the session surface is unchanged — including when history changes underneath a long summarization call (the span is re-verified before landing and compaction declines cleanly instead of committing blind).
 
 ## Result Contract
 
@@ -83,7 +83,7 @@ The commit is **atomic**: on any failure the session surface is unchanged.
 
 ```bash
 # Official CLI (recommended)
-dsh plugin --profile <name> add dsh-compaction-tool@0.4.0
+dsh plugin --profile <name> add dsh-compaction-tool@0.5.0
 
 # Or manual
 cd <profile-dir>

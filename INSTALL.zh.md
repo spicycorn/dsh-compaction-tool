@@ -27,7 +27,7 @@ DSH 里一切能力都是 `cordis.yml` 里的一行。判断一行属于**宿主
 ```bash
 # 1) 发布或链接包到可解析位置（npm 仓库 / git / file:）
 # 2) 一条命令安装 + 挂载
-dsh plugin --profile web add dsh-compaction-tool@0.1.0
+dsh plugin --profile web add dsh-compaction-tool@0.5.0
 ```
 
 该命令做了三件事（和 `dsh-lmstudio-long-prefill` 的机制一致）：
@@ -128,3 +128,8 @@ dsh --profile web --dump-config | grep -A 10 'id: compaction-tool'
   provider 的 `baseURL` 可达；副模型是推理模型时调大 `summaryMaxTokens`。
 - **工具返回 `skipped`**：占用低于阈值——属正常。要立即压缩就 `/compact`（命令恒为 `force`）或带 `force: true`。
 - **取消**：主模型回合被中止时，总结调用会随 `AbortSignal` 一起中止，返回 `cancelled`，会话不变。
+- **报 `tool-pairing balance … no matching tool-call (corrupt surface)`（≥ 0.5.0 已修复）**：旧版本按「条数」切分压缩边界，可能把一条 assistant 消息里的 tool-call 与其后续 result 事件拆开——替换后表层出现孤儿 result，harness 的配对校验随即拒绝。
+  **升级到 ≥ 0.5.0**（`dsh plugin --profile web add dsh-compaction-tool@0.5.0 && pnpm install`）：切分点现在会自动对齐到工具配对边界，绝不拆对；若不存在安全切分位置则干净地拒绝压缩。
+  **注意：** 如果某个会话在旧版本下已经被压坏（表层已存在孤儿 result），新版本会持续返回 `failed: the session surface is already tool-pairing unbalanced …`——这是保护行为而非故障，该会话的日志需要人工修复或另开新会话；未受影响的会话不受任何影响。
+- **`/compact` 报 `summarization failed: …ErrorDeviceLost…`（本地引擎解码中途崩溃）**：压缩段对那个小模型来说一次请求太大。**≥ 0.5.0** 会按 token 预算自动切成多块、逐块折叠总结，并对瞬时故障（设备丢失 / 连接重置 / 5xx / 超时）带退避重试；若 provider 未报告该模型的上下文窗口，还会改用更保守的单块输入上限。仍失败时：调小 `summaryMaxTokens`，或换一个容量更大的压缩模型。
+- **报 `failed: the selected history changed during summarization; nothing was committed`**：总结调用进行期间会话表层被其他操作改动——保护行为，未做任何提交；直接重试 `/compact` 即可。

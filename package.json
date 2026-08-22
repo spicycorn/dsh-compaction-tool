@@ -1,7 +1,7 @@
 {
   "name": "dsh-compaction-tool",
-  "version": "0.4.0",
-  "description": "DeepSeek Harness (DSH) plugin that offloads context compaction to a selectable, fast secondary model: a compress_context tool + /compact command that summarize older history into a durable checkpoint, plus a Settings panel (Compaction section) for all compaction settings — independent of a slow main model. 通过可选择的轻量副模型做上下文压缩的 DSH 插件（compress_context 工具 + /compact 命令 + 设置面板）。",
+  "version": "0.5.0",
+  "description": "DeepSeek Harness (DSH) plugin that offloads context compaction to a selectable, fast secondary model: a compress_context tool + /compact command that summarize older history into a durable checkpoint — with tool-pairing-safe split boundaries and token-budgeted folded chunks for small local models — plus a Settings panel (Compaction section) for all compaction settings — independent of how slow the main model is. 通过可选择的轻量副模型做上下文压缩的 DSH 插件（compress_context 工具 + /compact 命令，切分点对齐工具配对边界、按预算折叠适配小本地模型）+ 设置面板。",
   "type": "module",
   "main": "lib/index.mjs",
   "module": "lib/index.mjs",

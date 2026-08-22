@@ -61,9 +61,9 @@ DSH 内置压缩（`dsh-compaction-basic`）用**会话主模型**做总结。�
 
 1. **测量** — `tokenMeter.measure` + 副模型上下文窗口
 2. **门控** — 占用低于阈值时跳过（除非 `force: true`）
-3. **切分** — 头部压缩段 + 最近保留尾
-4. **总结** — 调用**副模型**（`purpose: "compaction"`），复用会话前缀命中 KV cache
-5. **落地** — 原子 checkpoint：`compaction/start` → `summary` → `user/message (surfaceOp: replace)` → `compaction/end`
+3. **切分** — 头部压缩段 + 最近保留尾，且边界是**工具配对安全**的：切点会自动调整，绝不把一条 assistant 消息里的 tool-call 与其后续 result 事件拆开（与 DSH 内置压缩同一规则）。因此实际保留的尾巴可能比请求值略大；若不存在安全的切分位置——或表层已经存在孤儿 result——插件会干净地拒绝本次压缩，而不是弄坏会话
+4. **总结** — 调用**副模型**（`purpose: "compaction"`），复用会话前缀命中 KV cache；若压缩段超过该模型的输入预算（其上下文窗口的 70% 减去 `summaryMaxTokens`，未报告容量时用保守上限）则按 token 预算切成多块、逐块折叠总结——小本地引擎永远不会被要求处理一个超大请求。瞬时性引擎故障（设备丢失、连接重置、5xx/超时）会带退避重试
+5. **落地** — 原子 checkpoint：`compaction/start` → `summary` → `user/message (surfaceOp: replace)` → `compaction/end`；若中途失败，会补写自己的结束标记，不会留下陈旧的压缩锁
 
 **提交是原子的**：任何一步失败，会话 surface 都保持原样。
 
@@ -83,7 +83,7 @@ DSH 内置压缩（`dsh-compaction-basic`）用**会话主模型**做总结。�
 
 ```bash
 # 官方 CLI（推荐）
-dsh plugin --profile <你的profile> add dsh-compaction-tool@0.4.0
+dsh plugin --profile <你的profile> add dsh-compaction-tool@0.5.0
 
 # 或手动
 cd <profile目录>
